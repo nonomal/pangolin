@@ -2116,6 +2116,7 @@
     "domainPickerFreeProvidedDomain": "Gratis verstrekt domein",
     "domainPickerVerified": "Geverifieerd",
     "domainPickerUnverified": "Ongeverifieerd",
+    "domainPickerManual": "Manual",
     "domainPickerInvalidSubdomainStructure": "Dit subdomein bevat ongeldige tekens of structuur. Het zal automatisch worden gesaneerd wanneer u opslaat.",
     "domainPickerError": "Foutmelding",
     "domainPickerErrorLoadDomains": "Fout bij het laden van organisatiedomeinen",
