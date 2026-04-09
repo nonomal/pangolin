@@ -2116,6 +2116,7 @@
     "domainPickerFreeProvidedDomain": "Zdarma poskytnutá doména",
     "domainPickerVerified": "Ověřeno",
     "domainPickerUnverified": "Neověřeno",
+    "domainPickerManual": "Manual",
     "domainPickerInvalidSubdomainStructure": "Tato subdoména obsahuje neplatné znaky nebo strukturu. Bude automaticky sanitována při uložení.",
     "domainPickerError": "Chyba",
     "domainPickerErrorLoadDomains": "Nepodařilo se načíst domény organizace",
