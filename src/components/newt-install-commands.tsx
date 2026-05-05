@@ -52,6 +52,10 @@ export function NewtSiteInstallCommands({
     const acceptClientsEnv = !acceptClients
         ? "\n      - DISABLE_CLIENTS=true"
         : "";
+    const acceptClientsHelmValue = acceptClients
+        ? ` \\
+      --set newtInstances[0].acceptClients=true`
+        : "";
 
     const commandList: Record<Platform, Record<string, CommandItem[]>> = {
         linux: {
@@ -77,8 +81,12 @@ sudo install -d -m 0755 /etc/newt
 sudo tee /etc/newt/newt.env > /dev/null << 'EOF'
 NEWT_ID=${id}
 NEWT_SECRET=${secret}
-PANGOLIN_ENDPOINT=${endpoint}${!acceptClients ? `
-DISABLE_CLIENTS=true` : ""}
+PANGOLIN_ENDPOINT=${endpoint}${
+                        !acceptClients
+                            ? `
+DISABLE_CLIENTS=true`
+                            : ""
+                    }
 EOF
 sudo chmod 600 /etc/newt/newt.env`
                 },
@@ -158,13 +166,18 @@ sudo systemctl enable --now newt`
             "Helm Chart": [
                 `helm repo add fossorial https://charts.fossorial.io`,
                 `helm repo update fossorial`,
-                `helm install newt fossorial/newt \\
-    --create-namespace \\
-    --set newtInstances[0].name="main-tunnel" \\
-    --set newtInstances[0].enabled=true \\
-    --set-string newtInstances[0].auth.keys.endpointKey="${endpoint}" \\
-    --set-string newtInstances[0].auth.keys.idKey="${id}" \\
-    --set-string newtInstances[0].auth.keys.secretKey="${secret}"`
+                `kubectl create namespace newt --dry-run=client -o yaml | kubectl apply -f -`,
+                `kubectl create secret generic newt-main-tunnel-auth \\
+   -n newt \\
+  --from-literal=PANGOLIN_ENDPOINT="${endpoint}" \\
+  --from-literal=NEWT_ID="${id}" \\
+  --from-literal=NEWT_SECRET="${secret}" \\
+  --dry-run=client -o yaml | kubectl apply -f -`,
+                `helm upgrade --install newt fossorial/newt \\
+  -n newt \\
+  --set newtInstances[0].name="main-tunnel" \\
+  --set newtInstances[0].enabled=true \\
+  --set-string newtInstances[0].auth.existingSecretName="newt-main-tunnel-auth"${acceptClientsHelmValue}`
             ]
         },
         podman: {
@@ -232,9 +245,7 @@ WantedBy=default.target`
 
                 <OptionSelect<string>
                     label={
-                        platform === "windows"
-                            ? t("architecture")
-                            : t("method")
+                        platform === "windows" ? t("architecture") : t("method")
                     }
                     options={getArchitectures(platform).map((arch) => ({
                         value: arch,
@@ -247,7 +258,9 @@ WantedBy=default.target`
                 />
 
                 <div className="pt-4">
-                    <p className="font-bold mb-3">{t("siteConfiguration")}</p>
+                    <p className="font-semibold mb-3">
+                        {t("siteConfiguration")}
+                    </p>
                     <div className="flex items-center space-x-2 mb-2">
                         <CheckboxWithLabel
                             id="acceptClients"
@@ -269,7 +282,7 @@ WantedBy=default.target`
                 </div>
 
                 <div className="pt-4">
-                    <p className="font-bold mb-3">{t("commands")}</p>
+                    <p className="font-semibold mb-3">{t("commands")}</p>
                     {platform === "kubernetes" && (
                         <p className="text-sm text-muted-foreground mb-3">
                             For more and up to date Kubernetes installation

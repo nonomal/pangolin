@@ -416,7 +416,8 @@ export class TraefikConfigManager {
                         // Get valid certificates for domains not covered by wildcards
                         validCertificates =
                             await getValidCertificatesForDomains(
-                                domainsToFetch
+                                domainsToFetch,
+                                true
                             );
                         this.lastCertificateFetch = new Date();
                         this.lastKnownDomains = new Set(domains);
@@ -533,6 +534,24 @@ export class TraefikConfigManager {
                         const match = router.rule.match(/Host\(`([^`]+)`\)/);
                         if (match && match[1]) {
                             domains.add(match[1]);
+                        }
+                        // Match HostRegexp(`^[^.]+\.parent.domain$`) generated for wildcard resources
+                        const hostRegexpMatch = router.rule.match(
+                            /HostRegexp\(`([^`]+)`\)/
+                        );
+                        if (hostRegexpMatch && hostRegexpMatch[1]) {
+                            const innerRegex = hostRegexpMatch[1];
+                            // Pattern is always ^[^.]+\.PARENT_DOMAIN$ where dots are escaped as \.
+                            const domainMatch = innerRegex.match(
+                                /^\^\[\^\.\]\+\\\.(.+)\$$/
+                            );
+                            if (domainMatch && domainMatch[1]) {
+                                const parentDomain = domainMatch[1].replace(
+                                    /\\\./g,
+                                    "."
+                                );
+                                domains.add(`*.${parentDomain}`);
+                            }
                         }
                     }
                 }
@@ -1011,7 +1030,7 @@ export class TraefikConfigManager {
                 );
 
                 if (!isUnused) {
-                    // Domain is still active — remove from pending deletion if it was queued
+                    // Domain is still active - remove from pending deletion if it was queued
                     if (this.pendingDeletion.has(dirName)) {
                         logger.info(
                             `Certificate ${dirName} is active again, cancelling pending deletion`
@@ -1021,7 +1040,7 @@ export class TraefikConfigManager {
                     continue;
                 }
 
-                // Domain is unused — add to pending deletion or decrement its counter
+                // Domain is unused - add to pending deletion or decrement its counter
                 if (!this.pendingDeletion.has(dirName)) {
                     const graceCycles = 3;
                     logger.info(
@@ -1036,7 +1055,7 @@ export class TraefikConfigManager {
                         );
                         this.pendingDeletion.set(dirName, remaining);
                     } else {
-                        // Grace period expired — actually delete now
+                        // Grace period expired - actually delete now
                         this.pendingDeletion.delete(dirName);
 
                         const domainDir = path.join(certsPath, dirName);
